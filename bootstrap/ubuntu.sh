@@ -3,9 +3,28 @@
 #set -mex
 set -e
 
-disk_image='noble-server-cloudimg-amd64.img'
 disk_qemu='hda.img'
 iso_qemu='cidata.iso'
+
+while [[ -n "${3}" ]]; do
+    case "${1}" in
+        --user) 
+            default_user="${2}"
+            ;;
+        --host)
+            hostname="${2}"
+            ;;
+        *)
+            echo "Something went wrong when parsing command line arguments..." 1>&2
+            echo "${1} is not a flag..." 1>&2
+            exit 1
+            ;;
+    esac
+    shift 2
+done
+
+: "${default_user:=ubuntu}"
+: "${hostname:=ubuntu}"
 
 indent () {
     if [[ -z "${2}" ]]; then
@@ -49,12 +68,19 @@ list () {
     cat "${files[@]}" | tail -n+2 | sed 's/^/- /' | sed "s/^/${spaces}/"
 }
 
-if [[ -z "${2}" ]] || [[ ! -d "${1}" ]] || [[ -f "${2}" ]]; then
+keyid () {
+    if [[ -z "${1}" ]]; then
+        exit 1
+    fi
+    wget -q -O - "${1}" | gpg --show-keys | sed '2q;d' | sed 's/ //g'
+}
+
+if [[ -z "${2}" ]] || [[ ! -f "${1}" ]] || [[ -f "${2}" ]]; then
     echo "COMMAND STATIC LIVE" 1>&2
     exit 1
 fi
 
-static="${1}"
+disk_source="${1}"
 live="${2}"
 
 secrets="${live}"/secrets
@@ -71,10 +97,17 @@ mkdir -p "${host_keys}"
 mkdir -p "${authorized_keys}"
 mkdir -p "${cloud_init}"
 
-if [[ ! -f "${live}"/"${disk_image}" ]]; then
-    cp "${static}"/"${disk_image}" "${live}"/"${disk_qemu}"
+if [[ ! -f "${live}"/"${disk_qemu}" ]]; then
+    cp "${disk_source}" "${live}"/"${disk_qemu}"
 fi
 
+if [[ ! -f "${user}"/default_user ]]; then
+    echo "${default_user}" > "${user}"/default_user
+fi
+
+if [[ ! -f "${user}"/hostname ]]; then
+    echo "${hostname}" > "${user}"/hostname
+fi
 
 if [[ ! -f "${user}"/password ]]; then
     head /dev/urandom | tr -dc '[:alnum:]' | head -c 20 > "${user}"/password
@@ -111,15 +144,26 @@ done <<EOF
 
 system_info:
   default_user:
-    name: user
+    name: ${default_user}
+hostname: ${hostname}
+create_hostname_file: true
 
 password: $(cat "${user}"/password)
 chpasswd:
   expire: false
 
+# Using keyid in this way only works if the maintainer of the repository you want to add also makes sure to upload their keys to keyserver.ubuntu.com
+apt:
+  sources:
+    grafana:
+      keyid: $(keyid https://apt.grafana.com/gpg.key)
+      keyserver: keyserver.ubuntu.com
+      source: 'deb [signed-by=\$KEY_FILE] https://apt.grafana.com stable main'
+
 packages:
   - apt: [avahi-daemon, libnss-mdns]
 
+ssh_pwauth: false
 allow_public_ssh_keys: true
 disable_root: true
 disable_root_opts: no-port-forwarding,no-agent-forwarding,no-X11-forwarding
@@ -154,7 +198,7 @@ while IFS= read -r; do
     echo "${REPLY}"
 done <<EOF
 Add to ssh config:
-HOST hostname
+HOST $(cat "${user}"/hostname).*
     ...
     IdentitiesOnly yes
     IdentityFile $(readlink -f "${authorized_keys}/ecdsa")

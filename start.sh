@@ -20,5 +20,5 @@ fi
 # run with bridged network 
 # requires the host to have a bridge called br0
 qemu-system-x86_64 -netdev bridge,br=br0,id=net0 -device virtio-net-pci,netdev=net0 \
- -machine accel=kvm:tcg -m 512 -nographic \
+ -cpu host -machine accel=kvm:tcg -m 512 -nographic \
  -hda "${live}"/"${disk_qemu}" -cdrom "${live}"/"${iso_qemu}"
