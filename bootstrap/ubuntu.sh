@@ -114,11 +114,11 @@ if [[ ! -f "${user}"/password ]]; then
 fi
 
 if [[ ! -f "${host_keys}"/ed25519 ]] && [[ ! -f "${host_keys}"/ed25519.pub ]]; then
-    ssh-keygen -q -t ed25519 -f "${host_keys}"/ed25519 -N "" -C ""
+    ssh-keygen -q -t ed25519 -f "${host_keys}"/ed25519 -N "" -C "root@${hostname}"
 fi
 
 if [[ ! -f "${authorized_keys}"/ed25519 ]] && [[ ! -f "${authorized_keys}"/ed25519.pub ]]; then
-    ssh-keygen -q -t ed25519 -f "${authorized_keys}"/ed25519 -N "" -C ""
+    ssh-keygen -q -t ed25519 -f "${authorized_keys}"/ed25519 -N "" -C "${default_user}@${hostname}"
 fi
 
 while IFS= read -r; do
@@ -179,7 +179,5 @@ Add to ssh config:
 HOST $(cat "${user}"/hostname).*
     ...
     IdentitiesOnly yes
-    IdentityFile $(readlink -f "${authorized_keys}/ecdsa")
     IdentityFile $(readlink -f "${authorized_keys}/ed25519")
-    IdentityFile $(readlink -f "${authorized_keys}/rsa")
 EOF
