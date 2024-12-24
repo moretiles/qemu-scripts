@@ -113,28 +113,12 @@ if [[ ! -f "${user}"/password ]]; then
     head /dev/urandom | tr -dc '[:alnum:]' | head -c 20 > "${user}"/password
 fi
 
-if [[ ! -f "${host_keys}"/ecdsa ]] && [[ ! -f "${host_keys}"/ecdsa.pub ]]; then
-    ssh-keygen -q -t ecdsa -f "${host_keys}"/ecdsa -N "" -C ""
-fi
-
 if [[ ! -f "${host_keys}"/ed25519 ]] && [[ ! -f "${host_keys}"/ed25519.pub ]]; then
     ssh-keygen -q -t ed25519 -f "${host_keys}"/ed25519 -N "" -C ""
 fi
 
-if [[ ! -f "${host_keys}"/rsa ]] && [[ ! -f "${host_keys}"/rsa.pub ]]; then
-    ssh-keygen -q -t rsa -b 3092 -f "${host_keys}"/rsa -N "" -C ""
-fi
-
-if [[ ! -f "${authorized_keys}"/ecdsa ]] && [[ ! -f "${authorized_keys}"/ecdsa.pub ]]; then
-    ssh-keygen -q -t ecdsa -f "${authorized_keys}"/ecdsa -N "" -C ""
-fi
-
 if [[ ! -f "${authorized_keys}"/ed25519 ]] && [[ ! -f "${authorized_keys}"/ed25519.pub ]]; then
     ssh-keygen -q -t ed25519 -f "${authorized_keys}"/ed25519 -N "" -C ""
-fi
-
-if [[ ! -f "${authorized_keys}"/rsa ]] && [[ ! -f "${authorized_keys}"/rsa.pub ]]; then
-    ssh-keygen -q -t rsa -b 3092 -f "${authorized_keys}"/rsa -N "" -C ""
 fi
 
 while IFS= read -r; do
@@ -171,15 +155,9 @@ ssh_deletekeys: true
 ssh_authorized_keys: 
   $(list "${authorized_keys}"/*.pub 2)
 ssh_keys: 
-  rsa_private: |
-    $(indent "${host_keys}"/rsa 4)
-  rsa_public: $(cat "${host_keys}"/rsa.pub)
   ed25519_private: |
     $(indent "${host_keys}"/ed25519 4)
   ed25519_public: $(cat "${host_keys}"/ed25519.pub)
-  ecdsa_private: |
-    $(indent "${host_keys}"/ecdsa 4)
-  ecdsa_public: $(cat "${host_keys}"/ecdsa.pub)
 EOF
 
 while IFS= read -r; do
