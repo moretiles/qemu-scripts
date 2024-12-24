@@ -72,7 +72,7 @@ keyid () {
     if [[ -z "${1}" ]]; then
         exit 1
     fi
-    wget -q -O - "${1}" | gpg --show-keys | sed '2q;d' | sed 's/ //g'
+    wget -q -O - "${1}" | gpg --show-keys --with-fingerprint | sed '2q;d' | sed 's/ //g'
 }
 
 if [[ -z "${2}" ]] || [[ ! -f "${1}" ]] || [[ -f "${2}" ]]; then

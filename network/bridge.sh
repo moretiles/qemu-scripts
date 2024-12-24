@@ -9,10 +9,10 @@ fi
 
 # Note: it is important that host ip includes the mask while gateway includes no mask
 
-INTERFACE="$(ip --br addr | grep 'enp\|eth' | awk '{print $1}' | head -n 1)"
+INTERFACE="$(ip --br addr | grep 'enp\|eth\|wlp' | grep 'UP' | awk '{print $1}' | head -n 1)"
 BRIDGE=br0
-HOSTIP="$(ip --br addr | grep 'enp\|eth' | awk '{print $3}' | head -n 1)"
-GATEWAY="$(ip route | grep 'default' | awk '{print $3}' | sort | uniq)"
+HOSTIP="$(ip --br addr | grep 'enp\|eth\|wlp' | grep 'UP' | awk '{print $3}' | head -n 1)"
+#GATEWAY="$(ip route | grep 'default' | awk '{print $3}' | sort | uniq)"
 
 #echo interface
 #echo "${INTERFACE}"
@@ -26,6 +26,6 @@ GATEWAY="$(ip route | grep 'default' | awk '{print $3}' | sort | uniq)"
 
 ip link add name "${BRIDGE}" type bridge
 ip address add "${HOSTIP}" dev "${BRIDGE}"
-ip link set dev "${BRIDGE}" up
 ip link set "${INTERFACE}" master "${BRIDGE}"
-ip route append default via "${GATEWAY}" dev "${BRIDGE}"
+ip link set dev "${BRIDGE}" up
+#ip route append default via "${GATEWAY}" dev "${BRIDGE}"
