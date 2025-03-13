@@ -1,0 +1,8 @@
+[Match]
+Name=br0
+
+[Network]
+DHCP=yes
+#Address=192.168.1.244 #gitleaks:allow
+#Gateway=192.168.1.1 #gitleaks:allow
+#DNS=1.1.1.1 #gitleaks:allow
