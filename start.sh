@@ -37,7 +37,7 @@ fi
 #
 qemu-system-x86_64 \
     -net nic,model=virtio,macaddr=52:54:00:00:00:"$(increment)" -net bridge,br=br0 \
-    -cpu host -machine type=q35,accel=kvm -smp 4 \
+    -cpu host -machine type=q35,accel=kvm -smp 1 \
     -m $((512 * 3)) \
     -nographic \
     -hda "${live}"/"${disk_qemu}" -cdrom "${live}"/"${iso_qemu}"
