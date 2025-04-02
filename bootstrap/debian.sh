@@ -42,20 +42,6 @@ list () {
 #}
 
 # use my favorite templating language: BASH
-template () {
-    if [[ -z "${1}" ]]; then
-        while IFS= read -r; do
-            echo "${REPLY}"
-        done
-    else
-        rm -f "${1}"
-        touch "${1}"
-        while IFS= read -r; do
-            echo "${REPLY}" >> "${1}"
-        done
-    fi
-}
-
 while [[ -n "${3}" ]]; do
     case "${1}" in
         --user) 
@@ -110,12 +96,12 @@ mkdir -p "${cloud_init}"
 qemu-img create -f qcow2 -F qcow2 -o backing_file="$(readlink -f "${disk_source}")" "${live}"/"${disk_qemu}"
 echo "${default_user}" > "${user}"/default_user
 echo "${hostname}" > "${user}"/hostname
-head /dev/urandom | tr -dc '[:alnum:]' | head -c 20 > "${user}"/password
+openssl rand 20 | base64 > "${user}"/password
 : "${password:=$(cat "${user}"/password)}"
 ssh-keygen -q -t ed25519 -f "${host_keys}"/ed25519 -N "" -C "root@${hostname}"
 ssh-keygen -q -t ed25519 -f "${authorized_keys}"/ed25519 -N "" -C "${default_user}@${hostname}"
 
-template "${cloud_init}"/user-data <<EOF
+cat > "${cloud_init}"/user-data <<EOF
 #cloud-config
 
 system_info:
@@ -172,7 +158,7 @@ ssh_keys:
 #    append: true
 EOF
 
-template "${cloud_init}"/network-config <<EOF
+cat > "${cloud_init}"/network-config <<EOF
 #network-config
 version: 2
 ethernets:
@@ -180,7 +166,7 @@ ethernets:
     dhcp4: true
 EOF
 
-template "${cloud_init}"/meta-data <<EOF
+cat > "${cloud_init}"/meta-data <<EOF
 instance-id: private/arch
 EOF
 
@@ -190,7 +176,7 @@ if [[ ! -f "${live}"/"${iso_qemu}" ]]; then
     xorriso -as genisoimage -output "${live}"/"${iso_qemu}" -volid CIDATA -joliet -rock "${cloud_init}"
 fi
 
-template <<EOF
+cat <<EOF
 Add to ssh config:
 HOST $(cat "${user}"/hostname).*
     IdentitiesOnly yes

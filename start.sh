@@ -35,9 +35,12 @@ fi
 # run with bridged network 
 # requires the host to have a bridge called br0
 #
-qemu-system-x86_64 \
+sudo qemu-system-x86_64 \
     -net nic,model=virtio,macaddr=52:54:00:00:00:"$(increment)" -net bridge,br=br0 \
     -cpu host -machine type=q35,accel=kvm -smp 1 \
     -m $((512 * 3)) \
     -nographic \
-    -hda "${live}"/"${disk_qemu}" -cdrom "${live}"/"${iso_qemu}"
+    -hda "${live}"/"${disk_qemu}" -cdrom "${live}"/"${iso_qemu}" 
+#   -hda "${live}"/"${disk_qemu}" -cdrom "${live}"/"${iso_qemu}" \
+#   -blockdev node-name=q1,driver=raw,file.driver=host_device,file.filename=/dev/sdb2 \
+#   -device virtio-blk,drive=q1
