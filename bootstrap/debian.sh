@@ -5,6 +5,7 @@ set -e
 
 disk_qemu='hda.img'
 iso_qemu='cidata.iso'
+root_ca_file='/home/dv/workspace/homelab/certs/root_2125.crt'
 
 # for the files supplied as arguments indent everything except the first 
 # line of the first file ${1} spaces
@@ -147,7 +148,7 @@ ssh_keys:
 #  remove_defaults: false # please make sure remove_defaults is disabled
 #  trusted:
 #  - |
-#    $(indent 4 /home/dv/workspace/homelab/certs/root.pem)
+#    $(indent 4 ${root_ca_file})
 #
 
 #write_files:
