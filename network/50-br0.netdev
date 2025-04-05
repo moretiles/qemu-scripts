@@ -1,3 +1,4 @@
 [NetDev]
+MACAddress={{ vault "kv/home/macs/oa" "bridge" }}
 Name=br0
 Kind=bridge
