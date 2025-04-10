@@ -35,7 +35,7 @@ fi
 # run with bridged network 
 # requires the host to have a bridge called br0
 #
-sudo qemu-system-x86_64 \
+qemu-system-x86_64 \
     -net nic,model=virtio,macaddr=52:54:00:00:00:"$(increment)" -net bridge,br=br0 \
     -cpu host -enable-kvm -machine type=q35,accel=kvm -smp 1 \
     -m $((512 * 3)) \
