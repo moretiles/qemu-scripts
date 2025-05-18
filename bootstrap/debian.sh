@@ -130,6 +130,7 @@ ssh_genkeytypes:
 packages:
   - avahi-daemon
   - libnss-mdns
+  - fail2ban
 
 ssh_authorized_keys: 
   - $(list 2 "${authorized_keys}"/*.pub)
@@ -146,12 +147,12 @@ ssh_keys:
 #  servers: 
 #  - ntp.home.arpa
 
-#ca_certs:
-#  remove_defaults: false # please make sure remove_defaults is disabled
-#  trusted:
-#  - |
-#    $(indent 4 ${root_ca_file})
-#
+ca_certs:
+  remove_defaults: false # please make sure remove_defaults is disabled
+  trusted:
+    - |
+      $(indent 6 ${root_ca_file})
+
 
 #write_files:
 #  - content: "trust this ssh cert you get from vault dude"

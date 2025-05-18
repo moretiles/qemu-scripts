@@ -1,12 +1,12 @@
 #!/bin/bash
 
 #set -mex
-set -euo pipefail
-
-unset peer
+set -e
 
 umask 077
 
+disk_qemu='hda.img'
+iso_qemu='cidata.iso'
 root_ca_file='/home/dv/workspace/homelab/certs/root_2125.crt'
 
 # for the files supplied as arguments indent everything except the first 
@@ -45,7 +45,7 @@ list () {
 #}
 
 # use my favorite templating language: BASH
-while (( ${#} >= 6 )); do
+while [[ -n "${3}" ]]; do
     case "${1}" in
         --user) 
             default_user="${2}"
@@ -66,21 +66,16 @@ while (( ${#} >= 6 )); do
 done
 
 # sanity check
-if (( ${#} != 5 )); then
-    echo "azure_bootstrap.sh requires \$1=output_directory \$2=internal_wireguard_address \$3=internal_wireguard_endpoint \$4=internal_wireguard_public_key \$5=internal_wireguard_subnet" 1>&2 #gitleaks:allow
-    echo "As an example:" 1>&2
-    echo "               ./azure_bootstrap.sh ubuntu 172.29.4.3/24 172.19.4.1 asdsad...= 172.19.4.0/24" #gitleaks:allow
+if [[ -z "${2}" ]] || [[ ! -f "${1}" ]] || [[ -f "${2}" ]]; then
+    echo "bootstrap.sh requires \$1=/path/to/backing-image.qcow2 \$2=/path/to/output-directory/" 1>&2
     exit 1
 fi
 
 : "${default_user:=debian}"
 : "${hostname:=debian}"
 
-live="${1}"
-internal_wireguard_address="${2}"
-internal_wireguard_endpoint="${3}"
-internal_wireguard_endpoint_pub="${4}"
-internal_wireguard_network="${5}"
+disk_source="${1}"
+live="${2}"
 
 if [[ -f "${live}" ]] || [[ -d "${live}" ]]; then
     echo "Hey delete ${live} yourself, I don't want to clobber it myself" 1>&2
@@ -91,7 +86,6 @@ secrets="${live}"/secrets
 user="${secrets}"/user
 host_keys="${secrets}"/host_keys
 authorized_keys="${secrets}"/authorized_keys
-wireguard_keys="${secrets}"/wireguard_keys
 
 cloud_init="${live}"/cloud-init
 
@@ -100,17 +94,15 @@ mkdir -p "${secrets}"
 mkdir -p "${user}"
 mkdir -p "${host_keys}"
 mkdir -p "${authorized_keys}"
-mkdir -p "${wireguard_keys}"
 mkdir -p "${cloud_init}"
 
+qemu-img create -f qcow2 -F qcow2 -o backing_file="$(readlink -f "${disk_source}")" "${live}"/"${disk_qemu}"
 echo "${default_user}" > "${user}"/default_user
 echo "${hostname}" > "${user}"/hostname
 openssl rand 20 | base64 > "${user}"/password
 : "${password:=$(cat "${user}"/password)}"
 ssh-keygen -q -t ed25519 -f "${host_keys}"/ed25519 -N "" -C "root@${hostname}"
 ssh-keygen -q -t ed25519 -f "${authorized_keys}"/ed25519 -N "" -C "${default_user}@${hostname}"
-wg genkey > "${wireguard_keys}"/internal_priv
-wg pubkey < "${wireguard_keys}"/internal_priv > "${wireguard_keys}"/internal_pub
 
 cat > "${cloud_init}"/user-data <<EOF
 #cloud-config
@@ -119,6 +111,7 @@ system_info:
   default_user:
     name: ${default_user}
 hostname: ${hostname}
+fqdn: ${hostname}.local
 create_hostname_file: true
 
 password: ${password}
@@ -129,9 +122,12 @@ ssh_pwauth: false
 allow_public_ssh_keys: true
 disable_root: true
 disable_root_opts: no-port-forwarding,no-agent-forwarding,no-X11-forwarding
-ssh_deletekeys: false
+ssh_deletekeys: true
 ssh_genkeytypes:
   - ed25519
+
+packages:
+  - avahi
 
 ssh_authorized_keys: 
   - $(list 2 "${authorized_keys}"/*.pub)
@@ -140,35 +136,49 @@ ssh_keys:
     $(indent 4 "${host_keys}"/ed25519)
   ed25519_public: $(cat "${host_keys}"/ed25519.pub)
 
-packages:
-  - wireguard
-  - wireguard-tools
+ntp:
+  enabled: true
+  ntp_client: systemd-timesyncd
+  servers: 
+  - ntp.home.arpa
 
 ca_certs:
   remove_defaults: false # please make sure remove_defaults is disabled
   trusted:
     - |
-      $(indent 4 ${root_ca_file})
+      $(indent 6 ${root_ca_file})
 
-wireguard:
-  interfaces:
-    - name: wg0
-      config_path: /etc/wireguard/wg0.conf
-      content: |
-        [Interface]
-        Privatekey = $(cat "${wireguard_keys}"/internal_priv)
-        Address = ${internal_wireguard_address}
-        [Peer]
-        PublicKey = ${internal_wireguard_endpoint_pub}
-        AllowedIps = ${internal_wireguard_network}
-        Endpoint = ${internal_wireguard_endpoint}
-  readinessprobe:
-    - 'systemctl enable --now wg-quick@wg0.service'
+
+#write_files:
+#  - content: "trust this ssh cert you get from vault dude"
+#    path: /etc/ssh/ssh_known_hosts
+#    owner: root:root
+#    permissions: '0644'
+#    append: true
+
+#runcmd:
+#  - systemctl enable --now avahi-daemon
 EOF
 
-cat <<EOF
-This script is right now very untested and unfinished.
+cat > "${cloud_init}"/network-config <<EOF
+#network-config
+version: 2
+ethernets:
+  enp0s2:
+    dhcp4: true
+EOF
 
+cat > "${cloud_init}"/meta-data <<EOF
+instance-id: private/arch
+EOF
+
+touch "${cloud_init}"/vendor-data
+
+if [[ ! -f "${live}"/"${iso_qemu}" ]]; then
+    xorriso -as genisoimage -output "${live}"/"${iso_qemu}" -volid CIDATA -joliet -rock "${cloud_init}"
+fi
+
+cat <<EOF
 Add to ssh config:
 HOST $(cat "${user}"/hostname).*
     IdentitiesOnly yes
