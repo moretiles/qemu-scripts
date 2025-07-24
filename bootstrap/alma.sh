@@ -7,7 +7,7 @@ umask 077
 
 disk_qemu='hda.img'
 iso_qemu='cidata.iso'
-root_ca_file='/home/dv/workspace/homelab/certs/root_2125.crt'
+root_ca_file='/home/qemu/root_2125.crt'
 
 # for the files supplied as arguments indent everything except the first 
 # line of the first file ${1} spaces
@@ -71,8 +71,8 @@ if [[ -z "${2}" ]] || [[ ! -f "${1}" ]] || [[ -f "${2}" ]]; then
     exit 1
 fi
 
-: "${default_user:=debian}"
-: "${hostname:=debian}"
+: "${default_user:=alma}"
+: "${hostname:=alma}"
 
 disk_source="${1}"
 live="${2}"
@@ -111,7 +111,7 @@ system_info:
   default_user:
     name: ${default_user}
 hostname: ${hostname}
-fqdn: ${hostname}.local
+fqdn: ${hostname}.home.arpa
 create_hostname_file: true
 
 password: ${password}
@@ -126,8 +126,8 @@ ssh_deletekeys: true
 ssh_genkeytypes:
   - ed25519
 
-packages:
-  - avahi
+#packages:
+#  - avahi
 
 ssh_authorized_keys: 
   - $(list 2 "${authorized_keys}"/*.pub)
